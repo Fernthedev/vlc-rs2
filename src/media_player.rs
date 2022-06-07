@@ -56,11 +56,7 @@ impl MediaPlayer {
 
     /// is_playing
     pub fn is_playing(&self) -> bool {
-        if unsafe{ sys::libvlc_media_player_is_playing(self.ptr) } == 0 {
-            false
-        }else{
-            true
-        }
+        unsafe{ sys::libvlc_media_player_is_playing(self.ptr) }
     }
 
     /// Play
@@ -84,7 +80,7 @@ impl MediaPlayer {
 
     /// Stop (no effect if there is no media)
     pub fn stop(&self) {
-        unsafe{ sys::libvlc_media_player_stop(self.ptr) };
+        unsafe{ sys::libvlc_media_player_stop_async(self.ptr) };
     }
 
     pub fn set_callbacks<F>(
@@ -163,8 +159,8 @@ impl MediaPlayer {
 
     /// Set the movie time (in ms).
     /// This has no effect if no media is being played. Not all formats and protocols support this.
-    pub fn set_time(&self, time: i64) {
-        unsafe{ sys::libvlc_media_player_set_time(self.ptr, time); }
+    pub fn set_time(&self, time: i64, fast: bool) {
+        unsafe{ sys::libvlc_media_player_set_time(self.ptr, time, fast); }
     }
 
     /// Get movie position as percentage between 0.0 and 1.0.
@@ -177,8 +173,8 @@ impl MediaPlayer {
 
     /// Set movie position as percentage between 0.0 and 1.0.
     /// This has no effect if playback is not enabled. This might not work depending on the underlying input format and protocol.
-    pub fn set_position(&self, pos: f32) {
-        unsafe{ sys::libvlc_media_player_set_position(self.ptr, pos); }
+    pub fn set_position(&self, pos: f32, fast: bool) {
+        unsafe{ sys::libvlc_media_player_set_position(self.ptr, pos, fast); }
     }
 
     /// Set movie chapter (if applicable).
@@ -204,10 +200,7 @@ impl MediaPlayer {
 
     /// Is the player able to play.
     pub fn will_play(&self) -> bool {
-        unsafe{
-            let b = sys::libvlc_media_player_will_play(self.ptr);
-            if b == 0 { false }else{ true }
-        }
+        false
     }
 
     /// Get title chapter count.
@@ -277,26 +270,17 @@ impl MediaPlayer {
 
     /// Is this media player seekable?
     pub fn is_seekable(&self) -> bool {
-        unsafe{
-            let b = sys::libvlc_media_player_is_seekable(self.ptr);
-            if b == 0 { false }else{ true }
-        }
+        unsafe{ sys::libvlc_media_player_is_seekable(self.ptr) }
     }
 
     /// Can this media player be paused?
     pub fn can_pause(&self) -> bool {
-        unsafe{
-            let b = sys::libvlc_media_player_can_pause(self.ptr);
-            if b == 0 { false }else{ true }
-        }
+        unsafe{ sys::libvlc_media_player_can_pause(self.ptr) }
     }
 
     /// Check if the current program is scrambled.
     pub fn program_scrambled(&self) -> bool {
-        unsafe{
-            let b = sys::libvlc_media_player_program_scrambled(self.ptr);
-            if b == 0 { false }else{ true }
-        }
+        unsafe{ sys::libvlc_media_player_program_scrambled(self.ptr) }
     }
 
     /// Display the next frame (if supported)

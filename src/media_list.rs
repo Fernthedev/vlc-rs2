@@ -3,7 +3,7 @@
 // Licensed under the MIT license, see the LICENSE file.
 
 use vlc_sys as sys;
-use crate::{Instance, Media, EventManager};
+use crate::{Media, EventManager};
 
 pub struct MediaList {
     pub(crate) ptr: *mut sys::libvlc_media_list_t,
@@ -11,9 +11,9 @@ pub struct MediaList {
 
 impl MediaList {
     /// Create an empty media list.
-    pub fn new(instance: &Instance) -> Option<MediaList> {
+    pub fn new() -> Option<MediaList> {
         unsafe{
-            let p = sys::libvlc_media_list_new(instance.ptr);
+            let p = sys::libvlc_media_list_new();
             if p.is_null() { None }else{ Some(MediaList{ptr: p}) }
         }
     }
@@ -82,7 +82,7 @@ impl MediaList {
 
     /// This indicates if this media list is read-only from a user point of view.
     pub fn is_readonly(&self) -> bool {
-        unsafe{ if sys::libvlc_media_list_is_readonly(self.ptr) == 0 { false }else{ true } }
+        unsafe{ sys::libvlc_media_list_is_readonly(self.ptr) }
     }
 
     /// Get lock on media list items

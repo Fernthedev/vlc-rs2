@@ -91,11 +91,6 @@ impl Instance {
         }
     }
 
-    /// Waits until an interface causes the instance to exit.
-    pub fn wait(&self) {
-        unsafe{ sys::libvlc_wait(self.ptr) };
-    }
-
     /// Sets some meta-information about the application.
     pub fn set_app_id(&self, id: &str, version: &str, icon: &str) {
         unsafe{
@@ -119,15 +114,6 @@ impl Instance {
             let p = sys::libvlc_video_filter_list_get(self.ptr);
             if p.is_null() { None }
             else { Some(ModuleDescriptionList{ptr: p}) }
-        }
-    }
-
-    /// Returns the VLM event manager
-    pub fn vlm_event_manager<'a>(&'a self) -> EventManager<'a> {
-        unsafe{
-            let p = sys::libvlc_vlm_get_event_manager(self.ptr);
-            assert!(!p.is_null());
-            EventManager{ptr: p, _phantomdata: ::std::marker::PhantomData}
         }
     }
 
@@ -385,15 +371,6 @@ fn conv_event(pe: *const sys::libvlc_event_t) -> Event {
                 Event::MediaParsedChanged((*pe).u.media_parsed_changed.new_status)
             }
         },
-        EventType::MediaFreed => {
-            Event::MediaFreed
-        },
-        EventType::MediaStateChanged => {
-            unsafe{
-                let new_state: sys::libvlc_state_t = (*pe).u.media_state_changed.new_state.try_into().unwrap();
-                Event::MediaStateChanged(new_state.into())
-            }
-        },
         EventType::MediaSubItemTreeAdded => {
             Event::MediaSubItemTreeAdded
         },
@@ -426,9 +403,6 @@ fn conv_event(pe: *const sys::libvlc_event_t) -> Event {
         EventType::MediaPlayerBackward => {
             Event::MediaPlayerBackward
         },
-        EventType::MediaPlayerEndReached => {
-            Event::MediaPlayerEndReached
-        },
         EventType::MediaPlayerEncounteredError => {
             Event::MediaPlayerEncounteredError
         },
@@ -446,9 +420,6 @@ fn conv_event(pe: *const sys::libvlc_event_t) -> Event {
         EventType::MediaPlayerPausableChanged => {
             Event::MediaPlayerPausableChanged
         },
-        EventType::MediaPlayerTitleChanged => {
-            Event::MediaPlayerTitleChanged
-        },
         EventType::MediaPlayerSnapshotTaken => {
             Event::MediaPlayerSnapshotTaken
         },
@@ -457,9 +428,6 @@ fn conv_event(pe: *const sys::libvlc_event_t) -> Event {
         },
         EventType::MediaPlayerVout => {
             Event::MediaPlayerVout
-        },
-        EventType::MediaPlayerScrambledChanged => {
-            Event::MediaPlayerScrambledChanged
         },
         EventType::MediaListItemAdded => {
             Event::MediaListItemAdded
@@ -493,67 +461,6 @@ fn conv_event(pe: *const sys::libvlc_event_t) -> Event {
         },
         EventType::MediaListPlayerStopped => {
             Event::MediaListPlayerStopped
-        },
-        EventType::MediaDiscovererStarted => {
-            Event::MediaDiscovererStarted
-        },
-        EventType::MediaDiscovererEnded => {
-            Event::MediaDiscovererEnded
-        },
-        EventType::VlmMediaAdded => {
-            unsafe {
-                Event::VlmMediaAdded(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaRemoved => {
-            unsafe {
-                Event::VlmMediaRemoved(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaChanged => {
-            unsafe {
-                Event::VlmMediaChanged(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaInstanceStarted => {
-            unsafe {
-                Event::VlmMediaInstanceStarted(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaInstanceStopped => {
-            unsafe {
-                Event::VlmMediaInstanceStopped(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaInstanceStatusInit => {
-            unsafe {
-                Event::VlmMediaInstanceStatusInit(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaInstanceStatusOpening => {
-            unsafe {
-                Event::VlmMediaInstanceStatusOpening(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaInstanceStatusPlaying => {
-            unsafe {
-                Event::VlmMediaInstanceStatusPlaying(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaInstanceStatusPause => {
-            unsafe {
-                Event::VlmMediaInstanceStatusPause(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaInstanceStatusEnd => {
-            unsafe {
-                Event::VlmMediaInstanceStatusEnd(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
-        },
-        EventType::VlmMediaInstanceStatusError => {
-            unsafe {
-                Event::VlmMediaInstanceStatusError(from_cstr((*pe).u.vlm_media_event.psz_instance_name), from_cstr((*pe).u.vlm_media_event.psz_media_name))
-            }
         },
     }
 }

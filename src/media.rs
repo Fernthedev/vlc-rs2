@@ -4,7 +4,7 @@
 
 use vlc_sys as sys;
 use crate::{Instance, EventManager};
-use crate::enums::{State, Meta, TrackType};
+use crate::enums::{Meta, TrackType};
 use crate::tools::{to_cstr, from_cstr, path_to_cstr};
 use std::path::Path;
 
@@ -98,11 +98,6 @@ impl Media {
         if unsafe{ sys::libvlc_media_save_meta(self.ptr) } == 0 { false }else{ true }
     }
 
-    /// Get current state of media descriptor object.
-    pub fn state(&self) -> State {
-        unsafe{ sys::libvlc_media_get_state(self.ptr).into() }
-    }
-
     /// Get duration (in ms) of media descriptor object item.
     pub fn duration(&self) -> Option<i64> {
         let time = unsafe{
@@ -123,7 +118,7 @@ impl Media {
 
     /// Get Parsed status for media descriptor object.
     pub fn is_parsed(&self) -> bool {
-        if unsafe{ sys::libvlc_media_is_parsed(self.ptr) } == 0 { false }else{ true }
+        unsafe{ sys::libvlc_media_is_parsed(self.ptr) }
     }
 
     pub fn tracks(&self) -> Option<Vec<MediaTrack>> {

@@ -35,10 +35,10 @@ impl MediaPlayerVideoEx for MediaPlayer {
         unsafe{ sys::libvlc_toggle_fullscreen(self.ptr); }
     }
     fn set_fullscreen(&self, fullscreen: bool) {
-        unsafe{ sys::libvlc_set_fullscreen(self.ptr, if fullscreen { 1 }else{ 0 }); }
+        unsafe{ sys::libvlc_set_fullscreen(self.ptr, fullscreen); }
     }
     fn get_fullscreen(&self) -> bool {
-        unsafe{ if sys::libvlc_get_fullscreen(self.ptr) == 0 { false }else{ true } }
+        unsafe{ sys::libvlc_get_fullscreen(self.ptr) }
     }
     fn set_key_input(&self, on: bool) {
         unsafe{ sys::libvlc_video_set_key_input(self.ptr, if on { 1 }else{ 0 }); }
