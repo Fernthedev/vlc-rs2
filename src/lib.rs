@@ -24,3 +24,6 @@ pub use crate::media_library::*;
 pub use crate::video::*;
 pub use crate::audio::*;
 pub use crate::vlm::*;
+
+
+pub use vlc_sys as sys;
