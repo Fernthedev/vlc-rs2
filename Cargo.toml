@@ -1,9 +1,9 @@
 [package]
-name = "vlc-rs"
-version = "0.3.0"
+name = "vlc-rs2"
+version = "0.4.0"
 authors = ["T. Okubo <t.okubo.rx78+github@gmail.com>"]
 
-description = "Rust bindings for libVLC media framework."
+description = "Rust bindings for libVLC media framework. Fork of vlc-rs with updated libvlc-sys."
 keywords = ["libVLC", "bindings", "multimedia"]
 categories = ["external-ffi-bindings", "multimedia"]
 documentation = "https://docs.rs/vlc-rs"
@@ -11,7 +11,7 @@ repository = "https://code.videolan.org/videolan/vlc-rs"
 homepage = "https://code.videolan.org/videolan/vlc-rs"
 license = "MIT"
 readme = "README.md"
-edition = "2018"
+edition = "2021"
 
 [lib]
 name = "vlc"
@@ -22,5 +22,5 @@ libc = "0.2"
 libvlc-sys = { path = "libvlc-sys" }
 
 [features]
-default = []
-use-bindgen = ["libvlc-sys/use-bindgen"]
+default = ["bindgen"]
+bindgen = ["libvlc-sys/bindgen"]

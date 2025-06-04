@@ -1,6 +1,6 @@
 [package]
 name = "libvlc-sys"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["T. Okubo <t.okubo.rx78+devel@gmail.com>"]
 
 description = "libVLC C API"
@@ -10,7 +10,7 @@ documentation = "https://docs.rs/vlc-rs"
 repository = "https://code.videolan.org/videolan/vlc-rs"
 homepage = "https://code.videolan.org/videolan/vlc-rs"
 license = "MIT"
-edition = "2018"
+edition = "2021"
 build = "build.rs"
 
 [lib]
@@ -21,7 +21,7 @@ crate-type = ["rlib"]
 libc = "0.2"
 
 [build-dependencies]
-bindgen = {version = "0.59", optional = true }
+bindgen = {version = "0.71", optional = true }
 pkg-config = "0.3"
 
 [target.'cfg(target_os = "windows")'.build-dependencies]
@@ -29,4 +29,4 @@ vswhom = "0.1.0"
 
 [features]
 default = []
-use-bindgen = ["bindgen"]
+bindgen = ["dep:bindgen"]
