@@ -116,7 +116,7 @@ impl MediaPlayer {
     }
 
     /// Set the NSView handler where the media player should render its video output.
-    pub fn set_nsobject(&self, drawable: *mut c_void) {
+    pub unsafe fn set_nsobject(&self, drawable: *mut c_void) {
         unsafe{ sys::libvlc_media_player_set_nsobject(self.ptr, drawable) };
     }
 
@@ -139,7 +139,7 @@ impl MediaPlayer {
 
     /// Set a Win32/Win64 API window handle (HWND) where the media player should render its video output.
     /// If LibVLC was built without Win32/Win64 API output support, then this has no effects.
-    pub fn set_hwnd(&self, drawable: *mut c_void) {
+    pub unsafe  fn set_hwnd(&self, drawable: *mut c_void) {
         unsafe{ sys::libvlc_media_player_set_hwnd(self.ptr, drawable) };
     }
 

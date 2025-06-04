@@ -12,12 +12,12 @@ fn generate_bindings() {
         .use_core()
         // Use libc
         .ctypes_prefix("libc")
-        // Whitelist
-        .whitelist_type(".*vlc.*")
-        .whitelist_function(".*vlc.*")
-        .whitelist_var(".*vlc.*")
-        .whitelist_function("vsnprintf")
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks));
+        // Allowlist
+        .allowlist_type(".*vlc.*")
+        .allowlist_function(".*vlc.*")
+        .allowlist_var(".*vlc.*")
+        .allowlist_function("vsnprintf")
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
 
     // Set header include paths
     let pkg_config_library = pkg_config::Config::new().probe("libvlc").unwrap();

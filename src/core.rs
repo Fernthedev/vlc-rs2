@@ -142,7 +142,7 @@ impl Drop for Instance {
 
 const BUF_SIZE: usize = 1024; // Write log message to the buffer by vsnprintf.
 unsafe extern "C" fn logging_cb(
-    data: *mut c_void, level: c_int, ctx: *const sys::libvlc_log_t, fmt: *const c_char, args: *mut sys::__va_list_tag) {
+    data: *mut c_void, level: c_int, ctx: *const sys::libvlc_log_t, fmt: *const c_char, args: vlc_sys::va_list) {
 
     let f: &Box<dyn Fn(LogLevel, Log, Cow<str>) + Send + 'static> = ::std::mem::transmute(data);
     let mut buf: [c_char; BUF_SIZE] = [0; BUF_SIZE];
@@ -310,8 +310,8 @@ pub struct EventManager<'a> {
 }
 
 impl<'a> EventManager<'a> {
-    pub fn detach(&self, event_type: EventType, registered_callback: *mut c_void) {
-        unsafe { sys::libvlc_event_detach(self.ptr, event_type as i32, Some(event_manager_callback), registered_callback) }
+    pub unsafe fn detach(&self, event_type: EventType, registered_callback: *mut c_void) {
+        sys::libvlc_event_detach(self.ptr, event_type as i32, Some(event_manager_callback), registered_callback)
     }
 
     pub fn attach<F>(&self, event_type: EventType, callback: F) -> Result<*mut c_void, ()>
