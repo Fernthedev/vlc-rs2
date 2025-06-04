@@ -1,6 +1,6 @@
+use pkg_config;
 use std::env;
 use std::path::PathBuf;
-use pkg_config;
 
 #[cfg(feature = "bindgen")]
 fn generate_bindings() {
@@ -20,9 +20,22 @@ fn generate_bindings() {
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
 
     // Set header include paths
-    let pkg_config_library = pkg_config::Config::new().probe("libvlc").unwrap();
-    for include_path in &pkg_config_library.include_paths {
-        bindings = bindings.clang_arg(format!("-I{}", include_path.display()));
+    let pkg_config_library = pkg_config::Config::new().probe("libvlc");
+    match pkg_config_library {
+        // try with pkg-config
+        Ok(pkg_config_library) => {
+            for include_path in &pkg_config_library.include_paths {
+                bindings = bindings.clang_arg(format!("-I{}", include_path.display()));
+            }
+        }
+        // fallback to manually set include path
+        _ => {
+            // If pkg-config fails, we assume the user has set VLC_INCLUDE_DIR
+            #[cfg(target_os = "macos")]
+            {
+                bindings = bindings.clang_arg(format!("-I{}", macos::include_dir()));
+            }
+        }
     }
 
     let bindings = bindings.generate().expect("Unable to generate bindings");
@@ -34,17 +47,13 @@ fn generate_bindings() {
 }
 
 #[cfg(not(feature = "bindgen"))]
-fn copy_pregenerated_bindings()
-{
+fn copy_pregenerated_bindings() {
     use std::fs;
 
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     let crate_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    fs::copy(
-        crate_path.join("bindings.rs"),
-        out_path.join("bindings.rs"),
-    )
-    .expect("Couldn't find pregenerated bindings!");
+    fs::copy(crate_path.join("bindings.rs"), out_path.join("bindings.rs"))
+        .expect("Couldn't find pregenerated bindings!");
 }
 
 fn link_vlc_with_pkgconfig() -> Result<pkg_config::Library, pkg_config::Error> {
@@ -162,6 +171,25 @@ mod windows {
     }
 }
 
+#[cfg(target_os = "macos")]
+mod macos {
+    use std::env;
+
+    pub fn link_vlc() {
+        let vlc_path = env::var_os("VLC_LIB_DIR")
+            .unwrap_or_else(|| "/Applications/VLC.app/Contents/MacOS/lib".into());
+
+        println!("cargo:rustc-link-search=native={:?}", vlc_path);
+        println!("cargo:rustc-link-lib=dylib=vlc");
+        println!("cargo:rustc-link-lib=dylib=vlccore");
+    }
+
+    pub fn include_dir() -> String {
+        env::var("VLC_INCLUDE_DIR")
+            .unwrap_or_else(|_| "/Applications/VLC.app/Contents/MacOS/include".into())
+    }
+}
+
 fn main() {
     // Binding generation
     #[cfg(feature = "bindgen")]
@@ -175,8 +203,8 @@ fn main() {
         #[cfg(target_os = "windows")]
         windows::link_vlc();
 
-        #[cfg(not(target_os = "windows"))]
-        panic!("libvlc not found: {:?}", err);
+        #[cfg(target_os = "macos")]
+        macos::link_vlc();
     }
 
     println!("cargo:rustc-link-lib=vlc");
