@@ -178,8 +178,8 @@ mod macos {
     pub fn link_vlc() {
         let vlc_path = env::var_os("VLC_LIB_DIR")
             .unwrap_or_else(|| "/Applications/VLC.app/Contents/MacOS/lib".into());
-
-        println!("cargo:rustc-link-search=native={:?}", vlc_path);
+            
+        println!("cargo:rustc-link-search=native={}", vlc_path.to_string_lossy());
         println!("cargo:rustc-link-lib=dylib=vlc");
         println!("cargo:rustc-link-lib=dylib=vlccore");
     }
