@@ -22,5 +22,5 @@ libc = "0.2"
 libvlc-sys = { path = "libvlc-sys" }
 
 [features]
-default = ["bindgen"]
+default = []
 bindgen = ["libvlc-sys/bindgen"]
