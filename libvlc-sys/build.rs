@@ -95,6 +95,7 @@ mod windows {
         //          msvcrt.lib(vsnprintf.obj) : error LNK2001: unresolved external symbol _vsnprintf
         //       ```
         //       https://stackoverflow.com/a/34230122
+        println!("cargo:rustc-link-lib=Advapi32");
         println!("cargo:rustc-link-lib=dylib=legacy_stdio_definitions");
     }
 
