@@ -73,9 +73,19 @@ mod windows {
     use std::path::{Path, PathBuf};
     use std::process::Command;
 
-    use vswhom::VsFindResult;
-
+    #[cfg(not(feature = "vendor"))]
     pub fn link_vlc() {
+        let vlc_path = vlc_path();
+
+        println!("cargo:rustc-link-search=native={}", vlc_path.display());
+        println!("cargo:rustc-link-lib=dylib=vlc");
+        println!("cargo:rustc-link-lib=dylib=vlccore");
+    }
+
+    #[cfg(feature = "vendor")]
+    pub fn link_vlc() {
+        use vswhom::VsFindResult;
+
         let vlc_path = vlc_path();
 
         let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
@@ -87,6 +97,7 @@ mod windows {
         );
 
         generate_lib_from_dll(&out_dir, &vs_exe_path, &vlc_path);
+
         println!("cargo:rustc-link-search=native={}", out_dir.display());
         // NOTE: Without this directive, linking fails with:
         //       ```
@@ -99,6 +110,8 @@ mod windows {
         println!("cargo:rustc-link-lib=dylib=legacy_stdio_definitions");
     }
 
+    /// Generates a .lib file from the .dll file using Visual Studio's tools.
+    /// For static linking
     fn generate_lib_from_dll(out_dir: &Path, vs_exe_path: &Path, vlc_path: &Path) {
         // https://wiki.videolan.org/GenerateLibFromDll/
 
@@ -179,8 +192,11 @@ mod macos {
     pub fn link_vlc() {
         let vlc_path = env::var_os("VLC_LIB_DIR")
             .unwrap_or_else(|| "/Applications/VLC.app/Contents/MacOS/lib".into());
-            
-        println!("cargo:rustc-link-search=native={}", vlc_path.to_string_lossy());
+
+        println!(
+            "cargo:rustc-link-search=native={}",
+            vlc_path.to_string_lossy()
+        );
         println!("cargo:rustc-link-lib=dylib=vlc");
         println!("cargo:rustc-link-lib=dylib=vlccore");
     }
