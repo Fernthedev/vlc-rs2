@@ -23,6 +23,4 @@ libvlc-sys = { path = "libvlc-sys" }
 
 [features]
 default = []
-#
-vendor = ["libvlc-sys/vendor"]
 bindgen = ["libvlc-sys/bindgen"]

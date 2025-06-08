@@ -15,7 +15,9 @@ fn generate_bindings() {
         // Allowlist
         .allowlist_type(".*vlc.*")
         .allowlist_function(".*vlc.*")
+        .allowlist_var(".*VLC.*")
         .allowlist_var(".*vlc.*")
+        .allowlist_var("^LIBVLC_.*")   // Regex for all vars starting with LIBVLC_
         .allowlist_function("vsnprintf")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
 
@@ -73,16 +75,6 @@ mod windows {
     use std::path::{Path, PathBuf};
     use std::process::Command;
 
-    #[cfg(not(feature = "vendor"))]
-    pub fn link_vlc() {
-        let vlc_path = vlc_path();
-
-        println!("cargo:rustc-link-search=native={}", vlc_path.display());
-        println!("cargo:rustc-link-lib=dylib=vlc");
-        println!("cargo:rustc-link-lib=dylib=vlccore");
-    }
-
-    #[cfg(feature = "vendor")]
     pub fn link_vlc() {
         use vswhom::VsFindResult;
 
@@ -106,7 +98,7 @@ mod windows {
         //          msvcrt.lib(vsnprintf.obj) : error LNK2001: unresolved external symbol _vsnprintf
         //       ```
         //       https://stackoverflow.com/a/34230122
-        println!("cargo:rustc-link-lib=Advapi32");
+        println!("cargo:rustc-link-lib=advapi32");
         println!("cargo:rustc-link-lib=dylib=legacy_stdio_definitions");
     }
 
