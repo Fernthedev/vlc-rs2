@@ -12,6 +12,7 @@ homepage = "https://code.videolan.org/videolan/vlc-rs"
 license = "MIT"
 readme = "README.md"
 edition = "2021"
+rust-version = "1.70"
 
 [lib]
 name = "vlc"
@@ -22,5 +23,7 @@ libc = "0.2"
 libvlc-sys = { path = "libvlc-sys" }
 
 [features]
-default = []
+default = ["bindgen", "pkg_config"]
+vendor = ["libvlc-sys/vendor"]
+pkg_config = ["libvlc-sys/pkg_config"]
 bindgen = ["libvlc-sys/bindgen"]

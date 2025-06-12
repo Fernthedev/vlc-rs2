@@ -1,6 +1,22 @@
-use pkg_config;
 use std::env;
+use std::ffi::OsString;
+
 use std::path::PathBuf;
+
+#[derive(Debug, Clone)]
+struct VLCAppConfig {
+    include_dir: Option<PathBuf>,
+    lib_dir: Option<PathBuf>,
+    lib_files: Option<Vec<PathBuf>>,
+    plugins_dir: Option<PathBuf>,
+}
+
+#[cfg(feature = "pkg_config")]
+fn pkg_config_probe() -> Result<pkg_config::Library, pkg_config::Error> {
+    pkg_config::Config::new()
+        .print_system_libs(false)
+        .probe("libvlc")
+}
 
 #[cfg(feature = "bindgen")]
 fn generate_bindings() {
@@ -8,8 +24,6 @@ fn generate_bindings() {
 
     let mut bindings = bindgen::Builder::default()
         .header("wrapper.h")
-        // For no_std
-        .use_core()
         // Use libc
         .ctypes_prefix("libc")
         // Allowlist
@@ -17,27 +31,13 @@ fn generate_bindings() {
         .allowlist_function(".*vlc.*")
         .allowlist_var(".*VLC.*")
         .allowlist_var(".*vlc.*")
-        .allowlist_var("^LIBVLC_.*")   // Regex for all vars starting with LIBVLC_
+        .allowlist_var("^LIBVLC_.*") // Regex for all vars starting with LIBVLC_
         .allowlist_function("vsnprintf")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
 
-    // Set header include paths
-    let pkg_config_library = pkg_config::Config::new().probe("libvlc");
-    match pkg_config_library {
-        // try with pkg-config
-        Ok(pkg_config_library) => {
-            for include_path in &pkg_config_library.include_paths {
-                bindings = bindings.clang_arg(format!("-I{}", include_path.display()));
-            }
-        }
-        // fallback to manually set include path
-        _ => {
-            // If pkg-config fails, we assume the user has set VLC_INCLUDE_DIR
-            #[cfg(target_os = "macos")]
-            {
-                bindings = bindings.clang_arg(format!("-I{}", macos::include_dir()));
-            }
-        }
+    // add includes
+    for include_path in header_includes() {
+        bindings = bindings.clang_arg(format!("-I{}", include_path.display()));
     }
 
     let bindings = bindings.generate().expect("Unable to generate bindings");
@@ -58,148 +58,185 @@ fn copy_pregenerated_bindings() {
         .expect("Couldn't find pregenerated bindings!");
 }
 
-fn link_vlc_with_pkgconfig() -> Result<pkg_config::Library, pkg_config::Error> {
-    pkg_config::Config::new()
-        .print_system_libs(false)
-        .probe("libvlc")
+fn header_includes() -> Vec<PathBuf> {
+    let mut includes = Vec::new();
+
+    // Check for VLC_INCLUDE_DIR environment variable
+
+    if let Some(include_dir) = env::var_os("VLC_INCLUDE_DIR") {
+        includes.push(PathBuf::from(include_dir));
+    }
+
+    #[cfg(feature = "pkg_config")]
+    {
+        if let Ok(lib) = pkg_config_probe() {
+            for include_path in lib.include_paths {
+                includes.push(include_path);
+            }
+        }
+    }
+
+    // If VLC_INCLUDE_DIR is not set, use the default include path based on the OS
+    let config = vlc_default_path();
+    if let Some(default_path) = config.include_dir {
+        includes.push(default_path);
+    }
+
+    includes
+}
+
+fn link_directories() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+
+    // Check for VLC_LIB_DIR environment variable
+    if let Some(lib_dir) = vlc_env_lib_path() {
+        dirs.push(lib_dir);
+    }
+
+    #[cfg(feature = "pkg_config")]
+    {
+        if let Ok(lib) = pkg_config_probe() {
+            for include_path in lib.link_paths {
+                dirs.push(include_path);
+            }
+        }
+    }
+
+    // If VLC_LIB_DIR is not set, use the default path based on the OS
+    let config = vlc_default_path();
+    if let Some(default_path) = config.lib_dir {
+        dirs.push(default_path);
+    }
+
+    dirs
 }
 
 #[cfg(target_os = "windows")]
-mod windows {
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-    compile_error!("Only x86 and x86_64 are supported at the moment. Adding support for other architectures should be trivial.");
+fn vlc_default_path() -> VLCAppConfig {
+    // On Windows, we assume the default path is in the VLC installation directory
+    let program_files =
+        env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string());
+    let vlc_path = PathBuf::from(program_files).join("VideoLAN").join("VLC");
 
-    use std::env;
-    use std::ffi::OsString;
-    use std::fs;
-    use std::path::{Path, PathBuf};
-    use std::process::Command;
+    let sdk = vlc_path.join("sdk");
 
-    pub fn link_vlc() {
-        use vswhom::VsFindResult;
+    let include_dir = sdk.join("include");
+    let lib_dir = sdk.join("lib");
+    let plugins_dir = vlc_path.join("plugins");
 
-        let vlc_path = vlc_path();
+    let libs = vec![lib_dir.join("libvlc.lib"), lib_dir.join("libvlccore.lib")];
 
-        let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
-
-        let vs = VsFindResult::search().expect("Could not locate Visual Studio");
-        let vs_exe_path = PathBuf::from(
-            vs.vs_exe_path
-                .expect("Could not retrieve executable path for Visual Studio"),
-        );
-
-        generate_lib_from_dll(&out_dir, &vs_exe_path, &vlc_path);
-
-        println!("cargo:rustc-link-search=native={}", out_dir.display());
-        // NOTE: Without this directive, linking fails with:
-        //       ```
-        //       error LNK2019: unresolved external symbol vsnprintf referenced in function _{MangledSymbolName}
-        //          msvcrt.lib(vsnprintf.obj) : error LNK2001: unresolved external symbol vsnprintf
-        //          msvcrt.lib(vsnprintf.obj) : error LNK2001: unresolved external symbol _vsnprintf
-        //       ```
-        //       https://stackoverflow.com/a/34230122
-        println!("cargo:rustc-link-lib=advapi32");
-        println!("cargo:rustc-link-lib=dylib=legacy_stdio_definitions");
-    }
-
-    /// Generates a .lib file from the .dll file using Visual Studio's tools.
-    /// For static linking
-    fn generate_lib_from_dll(out_dir: &Path, vs_exe_path: &Path, vlc_path: &Path) {
-        // https://wiki.videolan.org/GenerateLibFromDll/
-
-        let vs_dumpbin = vs_exe_path.join("dumpbin.exe");
-        let vs_lib = vs_exe_path.join("lib.exe");
-        let vlc_def_path = out_dir.join("libvlc.def");
-        let vlc_import_lib = out_dir.join("vlc.lib");
-
-        let libvlc = vlc_path.join("libvlc.dll");
-        let exports = Command::new(vs_dumpbin)
-            .current_dir(out_dir)
-            .arg("/EXPORTS")
-            .arg(libvlc.display().to_string().trim_end_matches(r"\"))
-            .output()
-            .unwrap();
-        let exports = String::from_utf8(exports.stdout).unwrap();
-
-        let mut vlc_def = String::from("EXPORTS\n");
-        for line in exports.lines() {
-            if let Some(line) = line.get(26..) {
-                if line.starts_with("libvlc_") {
-                    vlc_def.push_str(line);
-                    vlc_def.push_str("\r\n");
-                }
-            }
-        }
-        fs::write(&vlc_def_path, vlc_def.into_bytes()).unwrap();
-
-        // FIXME: Handle paths with spaces in them.
-        Command::new(vs_lib)
-            .current_dir(out_dir)
-            .arg("/NOLOGO")
-            .args(&[
-                format!(
-                    r#"/DEF:{}"#,
-                    vlc_def_path.display().to_string().trim_end_matches(r"\")
-                ),
-                format!(
-                    r#"/OUT:{}"#,
-                    vlc_import_lib.display().to_string().trim_end_matches(r"\")
-                ),
-                format!(
-                    "/MACHINE:{}",
-                    match target_arch().as_str() {
-                        "x86" => "x86",
-                        "x86_64" => "x64",
-                        _ => unreachable!(),
-                    }
-                ),
-            ])
-            .spawn()
-            .unwrap();
-    }
-
-    fn vlc_path() -> PathBuf {
-        #[allow(unused_assignments)]
-        let arch_path: Option<OsString> = match target_arch().as_str() {
-            "x86" => env::var_os("VLC_LIB_DIR_X86"),
-            "x86_64" => env::var_os("VLC_LIB_DIR_X86_64"),
-            _ => unreachable!(),
-        };
-
-        arch_path
-            .or_else(|| env::var_os("VLC_LIB_DIR"))
-            .map(PathBuf::from)
-            .expect("VLC_LIB_DIR not set")
-    }
-
-    fn target_arch() -> String {
-        env::var("CARGO_CFG_TARGET_ARCH").unwrap()
+    VLCAppConfig {
+        include_dir: include_dir.exists().then_some(include_dir),
+        lib_dir: lib_dir.exists().then_some(lib_dir),
+        lib_files: Some(libs), // Windows does not use lib files in the same way as Unix-like systems
+        plugins_dir: plugins_dir.exists().then_some(plugins_dir),
     }
 }
 
 #[cfg(target_os = "macos")]
-mod macos {
-    use std::env;
+fn vlc_default_path() -> VLCAppConfig {
+    // On macOS, we assume the default path is in the VLC installation directory
+    let home = env::var("HOME").ok()?;
+    let vlc_path = PathBuf::from(home)
+        .join("Library")
+        .join("Application Support")
+        .join("VLC");
 
-    pub fn link_vlc() {
-        let vlc_path = env::var_os("VLC_LIB_DIR")
-            .unwrap_or_else(|| "/Applications/VLC.app/Contents/MacOS/lib".into());
+    let include_dir = vlc_path.join("include");
+    let lib_dir = vlc_path.join("lib");
+    let plugins_dir = vlc_path.join("plugins");
 
-        println!(
-            "cargo:rustc-link-search=native={}",
-            vlc_path.to_string_lossy()
-        );
-        println!("cargo:rustc-link-lib=dylib=vlc");
-        println!("cargo:rustc-link-lib=dylib=vlccore");
+    let libs = vec![
+        lib_dir.join("libvlc.dylib"),
+        lib_dir.join("libvlccore.dylib"),
+    ];
+
+    VLCAppConfig {
+        include_dir: include_dir.exists().then_some(include_dir),
+        lib_dir: lib_dir.exists().then_some(lib_dir),
+        libs: Some(libs),
+        plugins_dir: plugins_dir.exists().then_some(plugins_dir),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn vlc_default_path() -> VLCAppConfig {
+    // On Linux, we assume the default path is in the system library paths
+    // This is usually handled by pkg-config, so we don't need to specify it here.
+
+    let mut libs = vec![PathBuf::from("libvlc.so"), PathBuf::from("libvlccore.so")];
+
+    #[cfg(feature = "pkg_config")]
+    {
+        let pkg = pkg_config_probe();
+        if let Ok(lib) = pkg {
+            libs.extend(lib.link_paths);
+        }
     }
 
-    pub fn include_dir() -> String {
-        env::var("VLC_INCLUDE_DIR")
-            .unwrap_or_else(|_| "/Applications/VLC.app/Contents/MacOS/include".into())
+    VLCAppConfig {
+        include_dir: None,
+        lib_dir: None,
+        lib_files: Some(libs),
+        plugins_dir: None,
+    }
+}
+
+fn vlc_env_lib_path() -> Option<PathBuf> {
+    let arch_path: Option<OsString> = match target_arch().as_str() {
+        "x86" => env::var_os("VLC_LIB_DIR_X86"),
+        "x86_64" => env::var_os("VLC_LIB_DIR_X86_64"),
+        "arm" => env::var_os("VLC_LIB_DIR_ARM"),
+        "aarch64" => env::var_os("VLC_LIB_DIR_AARCH64"),
+        _ => unreachable!(),
+    };
+
+    arch_path
+        .or_else(|| env::var_os("VLC_LIB_DIR"))
+        .map(PathBuf::from)
+}
+
+fn target_arch() -> String {
+    env::var("CARGO_CFG_TARGET_ARCH").unwrap()
+}
+
+#[cfg(feature = "runtime")]
+fn copy_runtime() {
+    let config = vlc_default_path();
+
+    // copy the runtime libraries to the output directory
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+
+    if let (Some(lib_dir), Some(lib_files)) = (&config.lib_dir, &config.lib_files) {
+        for lib in lib_files {
+            let src = lib_dir.join(lib);
+            let dest = out_dir.join(lib.file_name().unwrap());
+            std::fs::copy(src, dest).expect("Failed to copy runtime library");
+        }
+    }
+
+    // copy plugins
+    if let Some(plugins_dir) = &config.plugins_dir {
+        let out_plugins_dir = out_dir.join("vlc_plugins");
+        std::fs::create_dir_all(&out_plugins_dir).expect("Failed to create plugins directory");
+
+        fs_extra::dir::copy(
+            plugins_dir,
+            &out_plugins_dir,
+            &fs_extra::dir::CopyOptions {
+                overwrite: true,
+                ..Default::default()
+            },
+        ).expect("Failed to copy VLC plugins");
     }
 }
 
 fn main() {
+    let config = vlc_default_path();
+
+    println!("VLC configuration: {:#?}", config);
+
     // Binding generation
     #[cfg(feature = "bindgen")]
     generate_bindings();
@@ -207,14 +244,20 @@ fn main() {
     #[cfg(not(feature = "bindgen"))]
     copy_pregenerated_bindings();
 
-    // Link
-    if let Err(err) = link_vlc_with_pkgconfig() {
-        #[cfg(target_os = "windows")]
-        windows::link_vlc();
-
-        #[cfg(target_os = "macos")]
-        macos::link_vlc();
+    for lib_dir in link_directories() {
+        println!(
+            "cargo:rustc-link-search=native={}",
+            lib_dir.to_string_lossy()
+        );
     }
 
-    println!("cargo:rustc-link-lib=vlc");
+    for lib in config.lib_files.unwrap_or_default() {
+        println!(
+            "cargo:rustc-link-lib=dylib={}",
+            lib.file_stem().unwrap().to_string_lossy()
+        );
+    }
+
+    #[cfg(feature = "runtime")]
+    copy_runtime();
 }
