@@ -151,6 +151,7 @@ fn vlc_config() -> VLCAppConfig {
                 .join("Applications")
                 .join("VLC.app")
                 .join("Contents")
+                .join("MacOS")
         });
 
     let include_dir = vlc_path.join("include");
@@ -161,6 +162,9 @@ fn vlc_config() -> VLCAppConfig {
         lib_dir.join("libvlc.dylib"),
         lib_dir.join("libvlccore.dylib"),
     ];
+
+    // let default_lib_dir = PathBuf::from("/Applications/VLC.app/Contents/MacOS/lib");
+    // let default_include_dir = PathBuf::from("/Applications/VLC.app/Contents/MacOS/include");
 
     VLCAppConfig {
         include_dir: include_dir.exists().then_some(include_dir),
