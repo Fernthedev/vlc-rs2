@@ -147,7 +147,7 @@ fn vlc_config() -> VLCAppConfig {
         .map(PathBuf::from)
         .unwrap_or_else(|| {
             let home = env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
-            PathBuf::from(home)
+            PathBuf::from("/")
                 .join("Applications")
                 .join("VLC.app")
                 .join("Contents")
