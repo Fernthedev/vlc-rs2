@@ -254,6 +254,10 @@ fn copy_runtime() {
         for lib in lib_files {
             let src = lib_dir.join(lib);
             let dest = out_dir.join(lib.file_name().unwrap());
+            if !src.exists() {
+                eprintln!("Warning: Runtime library {} does not exist, skipping copy.", src.display());
+                continue;
+            }
             std::fs::copy(src, dest).expect("Failed to copy runtime library");
         }
     }
