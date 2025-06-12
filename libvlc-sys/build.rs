@@ -146,12 +146,7 @@ fn vlc_config() -> VLCAppConfig {
     let vlc_path = env::var_os("VLC_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
-            let home = env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
-            PathBuf::from("/")
-                .join("Applications")
-                .join("VLC.app")
-                .join("Contents")
-                .join("MacOS")
+            PathBuf::from("/Applications/VLC.app/Contents/MacOS")
         });
 
     let include_dir = vlc_path.join("include");
