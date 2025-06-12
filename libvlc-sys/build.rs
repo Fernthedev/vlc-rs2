@@ -165,7 +165,7 @@ fn vlc_config() -> VLCAppConfig {
     VLCAppConfig {
         include_dir: include_dir.exists().then_some(include_dir),
         lib_dir: lib_dir.exists().then_some(lib_dir),
-        libs: Some(libs),
+        lib_files: Some(libs),
         plugins_dir: plugins_dir.exists().then_some(plugins_dir),
     }
 }
