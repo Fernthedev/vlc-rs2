@@ -160,13 +160,13 @@ fn vlc_config() -> VLCAppConfig {
     }
 
     let mut libs = vec![
-        // lib_dir.join("libvlc.dylib"),
-        // lib_dir.join("libvlccore.dylib"),
+        lib_dir.join("libvlc.dylib"),
+        lib_dir.join("libvlccore.dylib"),
 
         // lib_dir.join("libvlc"),
         // lib_dir.join("libvlccore"),
-        lib_dir.join("vlc"),
-        lib_dir.join("vlccore"),
+        // lib_dir.join("vlc"),
+        // lib_dir.join("vlccore"),
     ];
 
     #[cfg(feature = "pkg_config")]
@@ -303,6 +303,13 @@ fn main() {
             "cargo:rustc-link-lib=dylib={}",
             lib.file_stem().unwrap().to_string_lossy()
         );
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // On macOS, we need to link against the dynamic libraries
+        println!("cargo:rustc-link-lib=dylib=vlc");
+        println!("cargo:rustc-link-lib=dylib=vlccore");
     }
 
     #[cfg(feature = "runtime")]
