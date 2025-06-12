@@ -298,14 +298,13 @@ fn main() {
         );
     }
 
-    for lib in config.lib_files.unwrap_or_default() {
-        println!(
-            "cargo:rustc-link-lib=dylib={}",
-            lib.file_stem().unwrap().to_string_lossy()
-        );
-    }
+    // for lib in config.lib_files.unwrap_or_default() {
+    //     println!(
+    //         "cargo:rustc-link-lib=dylib={}",
+    //         lib.file_stem().unwrap().to_string_lossy()
+    //     );
+    // }
 
-    #[cfg(target_os = "macos")]
     {
         // On macOS, we need to link against the dynamic libraries
         println!("cargo:rustc-link-lib=dylib=vlc");
