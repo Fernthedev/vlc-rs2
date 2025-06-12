@@ -145,9 +145,7 @@ fn vlc_config() -> VLCAppConfig {
     // On macOS, we assume the default path is in the VLC installation directory
     let vlc_path = env::var_os("VLC_PATH")
         .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            PathBuf::from("/Applications/VLC.app/Contents/")
-        });
+        .unwrap_or_else(|| PathBuf::from("/Applications/VLC.app/Contents/"));
 
     let mut include_dir = vlc_path.join("MacOS").join("include");
     let mut lib_dir = vlc_path.join("MacOS").join("lib");
@@ -161,34 +159,31 @@ fn vlc_config() -> VLCAppConfig {
         lib_dir = vlc_path.join("lib");
     }
 
-    let libs = vec![
+    let mut libs = vec![
         // lib_dir.join("libvlc.dylib"),
         // lib_dir.join("libvlccore.dylib"),
-        
+
         // lib_dir.join("libvlc"),
         // lib_dir.join("libvlccore"),
-
         lib_dir.join("vlc"),
         lib_dir.join("vlccore"),
     ];
-
 
     #[cfg(feature = "pkg_config")]
     {
         let pkg = pkg_config_probe();
         if let Ok(lib) = pkg {
-            libs.extend(lib.link_paths);
-
             if !include_dir.exists() {
                 // If the include/lib directory does not exist, we can use pkg-config to find it
                 include_dir = lib.include_paths.first().cloned().unwrap_or(include_dir);
-
             }
 
             if !lib_dir.exists() {
                 // If the lib directory does not exist, we can use pkg-config to find it
                 lib_dir = lib.link_paths.first().cloned().unwrap_or(lib_dir);
             }
+
+            libs.extend(lib.link_paths);
         }
     }
 
