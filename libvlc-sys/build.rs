@@ -77,7 +77,7 @@ fn header_includes() -> Vec<PathBuf> {
     }
 
     // If VLC_INCLUDE_DIR is not set, use the default include path based on the OS
-    let config = vlc_default_path();
+    let config = vlc_config();
     if let Some(default_path) = config.include_dir {
         includes.push(default_path);
     }
@@ -103,7 +103,7 @@ fn link_directories() -> Vec<PathBuf> {
     }
 
     // If VLC_LIB_DIR is not set, use the default path based on the OS
-    let config = vlc_default_path();
+    let config = vlc_config();
     if let Some(default_path) = config.lib_dir {
         dirs.push(default_path);
     }
@@ -112,12 +112,18 @@ fn link_directories() -> Vec<PathBuf> {
 }
 
 #[cfg(target_os = "windows")]
-fn vlc_default_path() -> VLCAppConfig {
+fn vlc_config() -> VLCAppConfig {
     // On Windows, we assume the default path is in the VLC installation directory
-    let program_files =
-        env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string());
-    let vlc_path = PathBuf::from(program_files).join("VideoLAN").join("VLC");
+    let vlc_path = env::var_os("VLC_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            let program_files =
+                env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string());
+            let vlc_path = PathBuf::from(program_files).join("VideoLAN").join("VLC");
+            vlc_path
+        });
 
+    // SDK is where the include and lib directories are located on windows
     let sdk = vlc_path.join("sdk");
 
     let include_dir = sdk.join("include");
@@ -135,13 +141,17 @@ fn vlc_default_path() -> VLCAppConfig {
 }
 
 #[cfg(target_os = "macos")]
-fn vlc_default_path() -> VLCAppConfig {
+fn vlc_config() -> VLCAppConfig {
     // On macOS, we assume the default path is in the VLC installation directory
-    let home = env::var("HOME").ok()?;
-    let vlc_path = PathBuf::from(home)
-        .join("Library")
-        .join("Application Support")
-        .join("VLC");
+    let vlc_path = env::var_os("VLC_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            let home = env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
+            PathBuf::from(home)
+                .join("Applications")
+                .join("VLC.app")
+                .join("Contents")
+        });
 
     let include_dir = vlc_path.join("include");
     let lib_dir = vlc_path.join("lib");
@@ -161,8 +171,12 @@ fn vlc_default_path() -> VLCAppConfig {
 }
 
 #[cfg(target_os = "linux")]
-fn vlc_default_path() -> VLCAppConfig {
+fn vlc_config() -> VLCAppConfig {
     // On Linux, we assume the default path is in the system library paths
+    let vlc_path = env::var_os("VLC_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/usr"));
+
     // This is usually handled by pkg-config, so we don't need to specify it here.
 
     let mut libs = vec![PathBuf::from("libvlc.so"), PathBuf::from("libvlccore.so")];
@@ -203,7 +217,7 @@ fn target_arch() -> String {
 
 #[cfg(feature = "runtime")]
 fn copy_runtime() {
-    let config = vlc_default_path();
+    let config = vlc_config();
 
     // copy the runtime libraries to the output directory
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -228,12 +242,13 @@ fn copy_runtime() {
                 overwrite: true,
                 ..Default::default()
             },
-        ).expect("Failed to copy VLC plugins");
+        )
+        .expect("Failed to copy VLC plugins");
     }
 }
 
 fn main() {
-    let config = vlc_default_path();
+    let config = vlc_config();
 
     println!("VLC configuration: {:#?}", config);
 
