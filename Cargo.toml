@@ -24,6 +24,9 @@ libvlc-sys = { path = "libvlc-sys" }
 
 [features]
 default = ["bindgen", "pkg_config"]
-vendor = ["libvlc-sys/vendor"]
-pkg_config = ["libvlc-sys/pkg_config"]
-bindgen = ["libvlc-sys/bindgen"]
+runtime = ["libvlc-sys/runtime"] # Include libs in out dir
+
+vendor = ["libvlc-sys/vendor"] # Download libvlc
+
+pkg_config = ["libvlc-sys/pkg_config"] # Use pkg-config to find libvlc
+bindgen = ["libvlc-sys/bindgen"] # Use bindgen to generate bindings
