@@ -162,8 +162,14 @@ fn vlc_config() -> VLCAppConfig {
     }
 
     let libs = vec![
-        lib_dir.join("libvlc.dylib"),
-        lib_dir.join("libvlccore.dylib"),
+        // lib_dir.join("libvlc.dylib"),
+        // lib_dir.join("libvlccore.dylib"),
+        
+        // lib_dir.join("libvlc"),
+        // lib_dir.join("libvlccore"),
+
+        lib_dir.join("vlc"),
+        lib_dir.join("vlccore"),
     ];
 
 
