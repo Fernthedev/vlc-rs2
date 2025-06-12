@@ -14,9 +14,42 @@ macro_rules! define_enum {
             )*
         }
 
-        impl From<sys::$original_type> for $enum_name {
-            fn from(a: sys::$original_type) -> Self {
-                match a {
+        impl $enum_name {
+            // pub type OriginalType = sys::$original_type;
+
+            pub fn as_c_value(&self) -> sys::$original_type {
+                match self {
+                    $(
+                        Self::$value => sys::$c_value,
+                    )*
+                }
+            }
+        }
+
+        // impl From<sys::$original_type> for $enum_name {
+        //     fn from(a: sys::$original_type) -> Self {
+        //         match a {
+        //             $(
+        //                 sys::$c_value => Self::$value,
+        //             )*
+        //             _ => unreachable!(),
+        //         }
+        //     }
+        // }
+
+        impl From<i32> for $enum_name {
+            fn from(a: i32) -> Self {
+                match a as sys::$original_type {
+                    $(
+                        sys::$c_value => Self::$value,
+                    )*
+                    _ => unreachable!(),
+                }
+            }
+        }
+        impl From<u32> for $enum_name {
+            fn from(a: u32) -> Self {
+                match a as sys::$original_type {
                     $(
                         sys::$c_value => Self::$value,
                     )*

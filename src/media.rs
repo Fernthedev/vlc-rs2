@@ -78,7 +78,7 @@ impl Media {
     /// If the media has not yet been parsed this will return None.
     pub fn get_meta(&self, meta: Meta) -> Option<String> {
         unsafe{
-            let p_str = sys::libvlc_media_get_meta(self.ptr, meta as u32);
+            let p_str = sys::libvlc_media_get_meta(self.ptr, meta as _);
             let s = from_cstr(p_str);
             sys::libvlc_free(p_str as *mut ::libc::c_void);
             s
@@ -89,7 +89,7 @@ impl Media {
     /// (This function will not save the meta, call save_meta in order to save the meta)
     pub fn set_meta(&self, meta: Meta, value: &str) {
         unsafe{
-            sys::libvlc_media_set_meta(self.ptr, meta as u32, to_cstr(value).as_ptr());
+            sys::libvlc_media_set_meta(self.ptr, meta as _, to_cstr(value).as_ptr());
         }
     }
 

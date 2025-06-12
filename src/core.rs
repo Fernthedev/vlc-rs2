@@ -136,7 +136,7 @@ impl Instance {
         let cb: Box<Box<dyn Fn(LogLevel, Log, Cow<str>) + Send + 'static>> = Box::new(Box::new(f));
 
         unsafe{
-            sys::libvlc_log_set(self.ptr, Some(logging_cb), Box::into_raw(cb) as *mut _);
+            sys::libvlc_log_set(self.ptr, Some(std::mem::transmute(logging_cb as *mut c_void)), Box::into_raw(cb) as *mut _);
         }
     }
 
@@ -154,6 +154,15 @@ impl Drop for Instance {
     }
 }
 
+extern "C" {
+    pub fn vsnprintf(
+        s: *mut libc::c_char,
+        n: libc::size_t,
+        format: *const libc::c_char,
+        ap: vlc_sys::va_list, // use the same va_list type you get in your callback
+    ) -> libc::c_int;
+}
+
 const BUF_SIZE: usize = 1024; // Write log message to the buffer by vsnprintf.
 unsafe extern "C" fn logging_cb(
     data: *mut c_void, level: c_int, ctx: *const sys::libvlc_log_t, fmt: *const c_char, args: vlc_sys::va_list) {
@@ -161,9 +170,11 @@ unsafe extern "C" fn logging_cb(
     let f: &Box<dyn Fn(LogLevel, Log, Cow<str>) + Send + 'static> = ::std::mem::transmute(data);
     let mut buf: [c_char; BUF_SIZE] = [0; BUF_SIZE];
 
-    sys::vsnprintf(buf.as_mut_ptr(), BUF_SIZE.try_into().unwrap(), fmt, args);
 
-    f((level as u32).into(), Log{ptr: ctx}, from_cstr_ref(buf.as_ptr()).unwrap());
+    vsnprintf(buf.as_mut_ptr(), BUF_SIZE.try_into().unwrap(), fmt, args);
+
+    
+    f((level).into(), Log{ptr: ctx}, from_cstr_ref(buf.as_ptr()).unwrap());
 }
 
 /// List of module description.
@@ -364,7 +375,7 @@ unsafe extern "C" fn event_manager_callback(pe: *const sys::libvlc_event_t, data
 
 // Convert c-style libvlc_event_t to Event
 fn conv_event(pe: *const sys::libvlc_event_t) -> Event {
-    let event_type: EventType = (unsafe{ (*pe).type_ } as u32).into();
+    let event_type: EventType = (unsafe{ (*pe).type_ }).into();
 
     match event_type {
         EventType::MediaMetaChanged => {
